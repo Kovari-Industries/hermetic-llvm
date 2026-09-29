@@ -1,11 +1,88 @@
 load("@bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//3rd_party/gcc:version.bzl", "GCC_VERSIONS", "gcc_repository_label", "gcc_target_suffix", "libstdcxx_constraint_value")
 load("//constraints/libc:libc_versions.bzl", "default_libc")
 
 package(default_visibility = ["//visibility:public"])
+
+_GNU_RUNTIME_COMPATIBLE = select({
+    "//runtimes/cxxstdlib:libstdcxx_linux_complete": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+cc_library(
+    name = "gnu_project",
+    srcs = ["gnu_project.cc"],
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+)
+
+cc_library(
+    name = "gnu_exception",
+    srcs = ["gnu_exception.cc"],
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+)
+
+cc_shared_library(
+    name = "gnu_exception_shared",
+    shared_lib_name = "libgnu_exception.so",
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+    deps = [":gnu_exception"],
+)
+
+# Deliberately omit linkstatic: ordinary project libraries must stay static.
+cc_binary(
+    name = "gnu_runtime_default",
+    srcs = ["gnu_runtime_main.cc"],
+    data = ["//runtimes/libstdcxx:runtime_files"],
+    dynamic_deps = [":gnu_exception_shared"],
+    linkopts = ["-ldl"],
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+    deps = [
+        ":gnu_exception",
+        ":gnu_project",
+    ],
+)
+
+cc_binary(
+    name = "gnu_runtime_dynamic",
+    srcs = ["gnu_runtime_main.cc"],
+    data = ["//runtimes/libstdcxx:runtime_files"],
+    dynamic_deps = [":gnu_exception_shared"],
+    linkopts = ["-ldl"],
+    linkstatic = False,
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+    deps = [
+        ":gnu_exception",
+        ":gnu_project",
+    ],
+)
+
+sh_test(
+    name = "gnu_runtime_link_test",
+    srcs = ["gnu_runtime_link_test.sh"],
+    data = [
+        ":gnu_exception_shared",
+        ":gnu_runtime_default",
+        ":gnu_runtime_dynamic",
+        "//runtimes/libstdcxx:libstdcxx.shared",
+        "//runtimes/libstdcxx:runtime_files",
+        "//runtimes/libunwind:libgcc_s.shared",
+        "//tools:llvm-readelf",
+    ],
+    env = {
+        "DEFAULT_BINARY": "$(rootpath :gnu_runtime_default)",
+        "DYNAMIC_BINARY": "$(rootpath :gnu_runtime_dynamic)",
+        "EXCEPTION_LIBRARY": "$(rootpath :gnu_exception_shared)",
+        "LIBGCC_S": "$(rootpath //runtimes/libunwind:libgcc_s.shared)",
+        "LIBSTDCXX": "$(rootpath //runtimes/libstdcxx:libstdcxx.shared)",
+        "READELF": "$(rootpath //tools:llvm-readelf)",
+    },
+    target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
+)
 
 sh_test(
     name = "shared_elf_test",

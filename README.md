@@ -206,27 +206,42 @@ Then build with that platform:
 bazel build --platforms=//:linux_x86_64_gnu_2_28_libstdcxx_17_0_0 //:app
 ```
 
-libstdc++ is currently supported as a dynamic C++ runtime, so C++ binaries
-using it must set `linkstatic = False`:
+On Linux glibc x86_64 and aarch64, libstdc++ and the unwind runtime are linked
+dynamically with both the default `linkstatic = True` and explicit
+`linkstatic = False`. The default still links ordinary project libraries
+statically. This does not provide fully static GNU binaries: `-static` and
+`fully_static_link` are unsupported.
+
+The linker uses the declared `libstdc++.so.6` and an LLVM-based GNU ABI adapter
+with SONAME `libgcc_s.so.1`. The adapter combines LLVM libunwind, selected
+compiler-rt builtins, and GNU symbol versions. It is not a renamed
+`libunwind.so.1` or a complete replacement for all GCC runtime ABIs. This path
+is limited to Linux glibc x86_64 and aarch64; other architectures, musl, and
+Windows are not qualified for this adapter.
+
+For default-linkstatic binaries, toolchain linker inputs do not automatically
+become runtime runfiles. Add `@llvm//runtimes/libstdcxx:runtime_files` to `data`
+or to your deployment package to include both declared runtime DSOs:
 
 ```starlark
 cc_binary(
     name = "app",
     srcs = ["main.cc"],
-    linkstatic = False,
+    data = ["@llvm//runtimes/libstdcxx:runtime_files"],
 )
 ```
 
-With Bazel's default dynamic mode, `cc_binary` defaults `linkstatic` to `True`,
-which selects the toolchain's static C++ runtime path. For libstdc++ that would
-make static libstdc++ the default, which is not what most Linux users expect,
-and this toolchain intentionally supports libstdc++ through the dynamic runtime
-path. `--dynamic_mode=off` also forces the static runtime path, even when
-`linkstatic = False`, so it cannot be combined with libstdc++ support.
+The application or package must also make those files discoverable by the
+loader, for example with a launcher that sets `LD_LIBRARY_PATH` to their
+runtime directories. Explicit dynamic linkage retains the toolchain's dynamic
+runtime provider. Do not assume that the host's `libstdc++.so.6` or
+`libgcc_s.so.1` provides the selected source version's ABI. Build tools and
+Rust proc macros that execute on the host need their own loader compatibility
+check.
 
-At the moment, libstdc++ support is limited to Linux glibc targets. Additional
-targets can be added based on demand; musl + libstdc++ is feasible too, even if
-it is an uncommon configuration.
+The native test `@llvm//runtimes/libstdcxx/tests:gnu_runtime_link_test` checks
+both link modes, exceptions across a shared-library boundary, ELF dependencies
+and symbol versions, and the actual loaded paths of the declared runtimes.
 
 ### ARM (armv7)
 

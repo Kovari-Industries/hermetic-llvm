@@ -35,10 +35,6 @@ copy_file(
 )
 
 stub_library(
-    name = "stdc++",
-)
-
-stub_library(
     name = "supc++",
 )
 
@@ -52,9 +48,19 @@ copy_file(
 copy_to_directory(
     name = "libstdcxx_library_search_directory",
     srcs = [
-        ":stdc++",
+        ":libstdcxx_shared_linker_name",
         ":stdc++fs",
         ":supc++",
     ],
     visibility = ["//visibility:public"],
+)
+
+# Explicit deployment/runfiles inputs, including for default-linkstatic binaries.
+# Toolchain linker inputs alone do not add runtime DSOs to binary runfiles.
+filegroup(
+    name = "runtime_files",
+    srcs = [
+        ":libstdcxx_shared_soname",
+        "//runtimes/libunwind:libgcc_s.shared",
+    ],
 )
