@@ -234,6 +234,11 @@ def _libstdcxx_patch(path):
     return "//3rd_party/gcc/patches:" + path
 
 GCC_PATCHES = {
+    # Clang loses the inline namespace on the qualified fs::_Dir definition.
+    # Preserve the distinct COW and C++11 ABI helper symbols in this runtime.
+    "13.3.0": [
+        _libstdcxx_patch("13.3.0/libstdcxx-filesystem-inline-abi.patch"),
+    ],
     "10.5.0": [
         _libstdcxx_patch("10.x/libstdcxx-cow-string-inst.patch"),
         _libstdcxx_patch("10.x/libstdcxx-constinit.patch"),
