@@ -242,6 +242,12 @@ check.
 The native test `@llvm//runtimes/libstdcxx/tests:gnu_runtime_link_test` checks
 both link modes, exceptions across a shared-library boundary, ELF dependencies
 and symbol versions, and the actual loaded paths of the declared runtimes.
+The adapter includes the unchanged compiler-rt `gcc_personality_v0.c` and exports
+`__gcc_personality_v0@@GCC_3.3.1` from `libgcc_s.so.1`. The regression requires
+that version from a shared C cleanup frame, propagates a C++ exception through
+it, and verifies both C and C++ cleanup. It also checks the versioned function's
+loaded path, so an application-local definition or host runtime cannot mask a
+missing adapter implementation.
 
 ### ARM (armv7)
 

@@ -955,6 +955,7 @@ cc_library(
         "lib/builtins/floatditf.c",
         "lib/builtins/floatsitf.c",
         "lib/builtins/floatunditf.c",
+        "lib/builtins/gcc_personality_v0.c",
         "lib/builtins/mulsc3.c",
         "lib/builtins/multf3.c",
         "lib/builtins/popcountdi2.c",
@@ -993,7 +994,10 @@ cc_library(
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//visibility:public"],
-    deps = [":linux_libc_headers"],
+    deps = [
+        ":linux_libc_headers",
+        "@llvm-project//libunwind:headers",
+    ],
 )
 
 ###

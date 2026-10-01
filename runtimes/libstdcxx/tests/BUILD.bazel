@@ -38,7 +38,11 @@ cc_library(
 
 cc_library(
     name = "gnu_exception",
-    srcs = ["gnu_exception.cc"],
+    srcs = [
+        "gnu_cleanup.c",
+        "gnu_exception.cc",
+    ],
+    conlyopts = ["-fexceptions"],
     target_compatible_with = _GNU_RUNTIME_COMPATIBLE,
 )
 

@@ -7,6 +7,8 @@
 #include <unwind.h>
 
 extern "C" void throw_from_shared_library(int* cleaned_up);
+extern "C" void call_through_c_cleanup(void (*callback)(int*), int* c_cleanup,
+                                      int* cpp_cleanup);
 int project_value();
 
 // Check actual loaded paths, not just DT_NEEDED. A system runtime can otherwise
@@ -30,11 +32,14 @@ int main() {
                    std::getenv("LIBGCC_S"))) return 2;
   if (!loaded_from(dlsym(RTLD_DEFAULT, "__cxa_throw"),
                    std::getenv("LIBSTDCXX"))) return 3;
+  if (!loaded_from(dlvsym(RTLD_DEFAULT, "__gcc_personality_v0", "GCC_3.3.1"),
+                   std::getenv("LIBGCC_S"))) return 6;
   int cleaned_up = 0;
+  int c_cleaned_up = 0;
   try {
-    throw_from_shared_library(&cleaned_up);
+    call_through_c_cleanup(throw_from_shared_library, &c_cleaned_up, &cleaned_up);
   } catch (const std::runtime_error& error) {
-    if (cleaned_up != 1 ||
+    if (cleaned_up != 1 || c_cleaned_up != 1 ||
         std::string(error.what()) != "exception from shared library") return 4;
     std::cout << "GNU runtime exception boundary passed\n";
     return 0;
