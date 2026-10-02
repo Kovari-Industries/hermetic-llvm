@@ -1016,8 +1016,14 @@ cc_args(
         # The clang driver forces -ISystem and doesn't claim the arg, which
         # would result in a warning when targeting macOS.
         "@platforms//os:macos": [],
-        # Will prevent clang from choosing which libunwind to link against.
-        "//conditions:default": ["--unwindlib=none"],
+        # Prevent automatic unwinder selection for C/C++. Rust also supplies
+        # -nodefaultlibs, which makes this option redundant. Mark only this
+        # conditional option as optional; do not silence other linker warnings.
+        "//conditions:default": [
+            "--start-no-unused-arguments",
+            "--unwindlib=none",
+            "--end-no-unused-arguments",
+        ],
     }),
 )
 

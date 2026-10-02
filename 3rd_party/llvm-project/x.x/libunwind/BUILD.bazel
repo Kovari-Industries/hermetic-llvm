@@ -1,4 +1,5 @@
 exports_files([
     "libgcc_s.version",
+    "libgcc_s_x86_64.version",
     "libunwind.BUILD.bazel",
 ])
