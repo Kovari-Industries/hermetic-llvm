@@ -183,15 +183,21 @@ cc_runtime_stage1_shared_library(
     ],
 )
 
+alias(
+    name = "gcc_s_version_script",
+    actual = select({
+        "@platforms//cpu:x86_64": "@llvm//3rd_party/llvm-project/x.x/libunwind:libgcc_s_x86_64.version",
+        "//conditions:default": "@llvm//3rd_party/llvm-project/x.x/libunwind:libgcc_s.version",
+    }),
+)
+
 cc_runtime_stage1_shared_library(
     name = "libgcc_s.shared",
-    additional_linker_inputs = [
-        "@llvm//3rd_party/llvm-project/x.x/libunwind:libgcc_s.version",
-    ],
+    additional_linker_inputs = [":gcc_s_version_script"],
     shared_lib_name = "libgcc_s.so.1",
     user_link_flags = [
         "-Wl,-soname,libgcc_s.so.1",
-        "-Wl,--version-script,$(location @llvm//3rd_party/llvm-project/x.x/libunwind:libgcc_s.version)",
+        "-Wl,--version-script,$(location :gcc_s_version_script)",
     ],
     target_compatible_with = select({
         "@llvm//runtimes/cxxstdlib:gnu_runtime_supported": [],
