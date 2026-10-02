@@ -13,23 +13,11 @@ GCC_3.0 {
     _Unwind_Resume;
     _Unwind_SetGR;
     _Unwind_SetIP;
-    __addtf3;
-    __divtf3;
-    __eqtf2;
-    __extendsftf2;
-    __floatditf;
-    __floatsitf;
-    __getf2;
-    __gttf2;
-    __letf2;
-    __lttf2;
-    __multf3;
-    __netf2;
-    __subtf3;
-    __trunctfdf2;
-    __trunctfsf2;
+    __divti3;
+    __modti3;
     __udivmodti4;
     __udivti3;
+    __umodti3;
   local:
     *;
 };
@@ -50,10 +38,30 @@ GCC_4.0.0 {
   global: __mulsc3;
 } GCC_3.4;
 GCC_4.2.0 {
-  global:
-    _Unwind_GetIPInfo;
-    __floatunditf;
+  global: _Unwind_GetIPInfo;
 } GCC_4.0.0;
-GCC_4.5.0 {
-  global: __unordtf2;
+GCC_4.3.0 {
+  global:
+    __addtf3;
+    __divtf3;
+    __eqtf2;
+    __extendsftf2;
+    __floatditf;
+    __floatsitf;
+    __floatunditf;
+    __getf2;
+    __gttf2;
+    __letf2;
+    __lttf2;
+    __multf3;
+    __netf2;
+    __subtf3;
+    __trunctfdf2;
+    __trunctfsf2;
+    __unordtf2;
 } GCC_4.2.0;
+GCC_4.8.0 {
+  global:
+    __cpu_model;
+    __cpu_indicator_init;
+} GCC_4.3.0;

@@ -955,6 +955,7 @@ cc_library(
         "lib/builtins/floatditf.c",
         "lib/builtins/floatsitf.c",
         "lib/builtins/floatunditf.c",
+        "lib/builtins/gcc_personality_v0.c",
         "lib/builtins/mulsc3.c",
         "lib/builtins/multf3.c",
         "lib/builtins/popcountdi2.c",
@@ -965,10 +966,18 @@ cc_library(
         "lib/builtins/udivti3.c",
     ] + select({
         "@platforms//cpu:aarch64": ["lib/builtins/aarch64/fp_mode.c"],
-        "@platforms//cpu:x86_64": ["lib/builtins/i386/fp_mode.c"],
+        "@platforms//cpu:x86_64": [
+            "lib/builtins/i386/fp_mode.c",
+            "lib/builtins/cpu_model/x86.c",
+            "lib/builtins/divti3.c",
+            "lib/builtins/modti3.c",
+            "lib/builtins/umodti3.c",
+        ],
         "//conditions:default": ["lib/builtins/fp_mode.c"],
     }),
+    local_defines = ["COMPILER_RT_GNU_CPU_EXPORTS"],
     hdrs = [
+        "lib/builtins/cpu_model/cpu_model.h",
         "lib/builtins/fp_extend.h",
         "lib/builtins/fp_lib.h",
         "lib/builtins/fp_mode.h",
@@ -981,6 +990,7 @@ cc_library(
     ],
     copts = ["-fvisibility=default"],
     textual_hdrs = [
+        "lib/builtins/int_div_impl.inc",
         "lib/builtins/fp_add_impl.inc",
         "lib/builtins/fp_compare_impl.inc",
         "lib/builtins/fp_div_impl.inc",
@@ -993,7 +1003,10 @@ cc_library(
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//visibility:public"],
-    deps = [":linux_libc_headers"],
+    deps = [
+        ":linux_libc_headers",
+        "@llvm-project//libunwind:headers",
+    ],
 )
 
 ###

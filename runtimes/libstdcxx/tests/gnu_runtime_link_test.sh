@@ -31,7 +31,13 @@ if grep -F 'Shared library: [libunwind.so' "$TEST_TMPDIR/gcc-dynamic"; then
   exit 1
 fi
 "$readelf" --version-info "$LIBGCC_S" > "$TEST_TMPDIR/gcc-versions"
-for version in GCC_3.0 GCC_3.3 GCC_3.4 GCC_4.0.0 GCC_4.2.0 GCC_4.5.0; do
+versions=(GCC_3.0 GCC_3.3 GCC_3.3.1 GCC_3.4 GCC_4.0.0 GCC_4.2.0)
+case "$(uname -m)" in
+  x86_64) versions+=(GCC_4.3.0 GCC_4.8.0) ;;
+  aarch64) versions+=(GCC_4.5.0) ;;
+  *) echo 'GNU runtime test requires native x86_64 or aarch64' >&2; exit 1 ;;
+esac
+for version in "${versions[@]}"; do
   grep -F "Name: $version" "$TEST_TMPDIR/gcc-versions"
 done
 "$readelf" --dyn-syms --wide "$LIBGCC_S" > "$TEST_TMPDIR/gcc-symbols"
@@ -39,6 +45,9 @@ grep -F '_Unwind_RaiseException@@GCC_3.0' "$TEST_TMPDIR/gcc-symbols"
 grep -F '_Unwind_Resume@@GCC_3.0' "$TEST_TMPDIR/gcc-symbols"
 grep -F '_Unwind_GetIPInfo@@GCC_4.2.0' "$TEST_TMPDIR/gcc-symbols"
 grep -F '__popcountdi2@@GCC_3.4' "$TEST_TMPDIR/gcc-symbols"
+grep -F '__gcc_personality_v0@@GCC_3.3.1' "$TEST_TMPDIR/gcc-symbols"
+"$readelf" --dyn-syms --wide "$exception_library" > "$TEST_TMPDIR/exception-symbols"
+grep -E 'UND +__gcc_personality_v0@GCC_3\.3\.1' "$TEST_TMPDIR/exception-symbols"
 
 for binary in "$default_binary" "$dynamic_binary"; do
   "$readelf" -d "$binary" > "$TEST_TMPDIR/binary-dynamic"

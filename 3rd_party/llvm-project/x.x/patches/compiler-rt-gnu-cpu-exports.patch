@@ -1,0 +1,21 @@
+diff --git a/compiler-rt/lib/builtins/cpu_model/x86.c b/compiler-rt/lib/builtins/cpu_model/x86.c
+--- a/compiler-rt/lib/builtins/cpu_model/x86.c
++++ b/compiler-rt/lib/builtins/cpu_model/x86.c
+@@ -245,7 +245,7 @@ enum ProcessorFeatures {
+   CPU_FEATURE_MAX
+ };
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !defined(COMPILER_RT_GNU_CPU_EXPORTS)
+ __attribute__((visibility("hidden")))
+ #endif
+ struct __processor_model {
+@@ -1238,7 +1238,7 @@ static void getAvailableFeatures(unsigned ECX, unsigned EDX, unsigned MaxLeaf,
+ #undef setFeature
+ }
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !defined(COMPILER_RT_GNU_CPU_EXPORTS)
+ __attribute__((visibility("hidden")))
+ #endif
+ int __cpu_indicator_init(void) CONSTRUCTOR_ATTRIBUTE;

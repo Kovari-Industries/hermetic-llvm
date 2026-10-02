@@ -242,6 +242,26 @@ check.
 The native test `@llvm//runtimes/libstdcxx/tests:gnu_runtime_link_test` checks
 both link modes, exceptions across a shared-library boundary, ELF dependencies
 and symbol versions, and the actual loaded paths of the declared runtimes.
+The adapter includes the unchanged compiler-rt `gcc_personality_v0.c` and exports
+`__gcc_personality_v0@@GCC_3.3.1` from `libgcc_s.so.1`. The regression requires
+that version from a shared C cleanup frame, propagates a C++ exception through
+it, and verifies both C and C++ cleanup. It also checks the versioned function's
+loaded path, so an application-local definition or host runtime cannot mask a
+missing adapter implementation.
+
+The x86_64 adapter also provides compiler-rt signed and unsigned 128-bit
+integer division/remainder, binary128 arithmetic at `GCC_4.3.0`, and CPU
+detection at `GCC_4.8.0`. CPU detection uses the upstream implementation; a
+source patch exposes its two GNU ABI symbols only for this adapter. The
+regression checks versioned symbol ownership, arithmetic results, and CPU
+initialization. The ARM version map is unchanged. These additions passed the
+native x86_64 regression and an isolated ROS Jazzy/NumPy 1.26.4 runtime check;
+native ARM qualification and other wheel/runtime combinations remain separate.
+
+Rust 1.99 reports unused linker options. The toolchain marks only
+`--unwindlib=none` as conditionally consumed: Rust supplies `-nodefaultlibs`,
+which makes automatic unwind-library selection inapplicable. Other compiler
+and linker diagnostics remain enabled.
 
 ### ARM (armv7)
 
