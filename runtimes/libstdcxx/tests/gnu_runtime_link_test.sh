@@ -33,7 +33,7 @@ fi
 "$readelf" --version-info "$LIBGCC_S" > "$TEST_TMPDIR/gcc-versions"
 versions=(GCC_3.0 GCC_3.3 GCC_3.3.1 GCC_3.4 GCC_4.0.0 GCC_4.2.0)
 case "$(uname -m)" in
-  x86_64) versions+=(GCC_4.3.0 GCC_4.8.0) ;;
+  x86_64) versions+=(GCC_4.3.0 GCC_4.8.0 GCC_12.0.0) ;;
   aarch64) versions+=(GCC_4.5.0) ;;
   *) echo 'GNU runtime test requires native x86_64 or aarch64' >&2; exit 1 ;;
 esac

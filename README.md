@@ -258,6 +258,14 @@ initialization. The ARM version map is unchanged. These additions passed the
 native x86_64 regression and an isolated ROS Jazzy/NumPy 1.26.4 runtime check;
 native ARM qualification and other wheel/runtime combinations remain separate.
 
+The x86_64 adapter also exports compiler-rt's `__extendhfdf2` at `GCC_12.0.0`
+and the complex-arithmetic, integer-power, and conversion symbols required by
+the declared OpenCV and BLAS libraries. The regression checks all 65,536 binary16
+representations against an independent decoder, exact symbol versions and loaded
+paths, and numeric behavior in both link modes. The native x86_64 regression and
+real application imports, including OpenCV, pass. These exports do not change the
+ARM version map or introduce a host GNU runtime fallback.
+
 Rust 1.99 reports unused linker options. The toolchain marks only
 `--unwindlib=none` as conditionally consumed: Rust supplies `-nodefaultlibs`,
 which makes automatic unwind-library selection inapplicable. Other compiler

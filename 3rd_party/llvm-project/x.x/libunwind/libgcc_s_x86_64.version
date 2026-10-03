@@ -35,10 +35,18 @@ GCC_3.4 {
   global: __popcountdi2;
 } GCC_3.3.1;
 GCC_4.0.0 {
-  global: __mulsc3;
+  global:
+    __divdc3;
+    __divsc3;
+    __muldc3;
+    __mulsc3;
+    __powidf2;
+    __powisf2;
 } GCC_3.4;
 GCC_4.2.0 {
-  global: _Unwind_GetIPInfo;
+  global:
+    _Unwind_GetIPInfo;
+    __floatuntidf;
 } GCC_4.0.0;
 GCC_4.3.0 {
   global:
@@ -46,6 +54,7 @@ GCC_4.3.0 {
     __divtf3;
     __eqtf2;
     __extendsftf2;
+    __fixtfsi;
     __floatditf;
     __floatsitf;
     __floatunditf;
@@ -65,3 +74,6 @@ GCC_4.8.0 {
     __cpu_model;
     __cpu_indicator_init;
 } GCC_4.3.0;
+GCC_12.0.0 {
+  global: __extendhfdf2;
+} GCC_4.8.0;

@@ -1,7 +1,10 @@
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unwind.h>
@@ -31,10 +34,46 @@ bool loaded_from(const void *symbol, const char *expected) {
 #if defined(__x86_64__)
 bool check_numeric_runtime() {
   const char *library = std::getenv("LIBGCC_S");
+  void *half_symbol = dlvsym(RTLD_DEFAULT, "__extendhfdf2", "GCC_12.0.0");
+  if (!loaded_from(half_symbol, library))
+    return false;
+  auto extend_half = reinterpret_cast<double (*)(_Float16)>(half_symbol);
+  // Decode binary16 independently: casting the input could call this same
+  // builtin.
+  for (unsigned bits = 0; bits < 65536; ++bits) {
+    const std::uint16_t representation = bits;
+    _Float16 input;
+    static_assert(sizeof(input) == sizeof(representation));
+    std::memcpy(&input, &representation, sizeof(input));
+    const double actual = extend_half(input);
+    const unsigned exponent = (bits >> 10) & 31;
+    const unsigned fraction = bits & 1023;
+    if (exponent == 31 && fraction != 0) {
+      if (!std::isnan(actual))
+        return false;
+      continue;
+    }
+    double expected =
+        exponent == 31
+            ? std::numeric_limits<double>::infinity()
+            : std::ldexp(exponent ? 1024 + fraction : fraction,
+                         exponent ? static_cast<int>(exponent) - 25 : -24);
+    if (bits & 0x8000)
+      expected = -expected;
+    if (actual != expected || std::signbit(actual) != std::signbit(expected))
+      return false;
+  }
   for (const char *name :
-       {"__addtf3", "__divtf3", "__eqtf2", "__floatditf", "__floatsitf",
-        "__floatunditf", "__getf2", "__gttf2", "__letf2", "__lttf2", "__multf3",
-        "__netf2", "__subtf3", "__unordtf2"}) {
+       {"__divdc3", "__divsc3", "__muldc3", "__powidf2", "__powisf2"}) {
+    if (!loaded_from(dlvsym(RTLD_DEFAULT, name, "GCC_4.0.0"), library))
+      return false;
+  }
+  if (!loaded_from(dlvsym(RTLD_DEFAULT, "__floatuntidf", "GCC_4.2.0"), library))
+    return false;
+  for (const char *name :
+       {"__addtf3", "__divtf3", "__eqtf2", "__fixtfsi", "__floatditf",
+        "__floatsitf", "__floatunditf", "__getf2", "__gttf2", "__letf2",
+        "__lttf2", "__multf3", "__netf2", "__subtf3", "__unordtf2"}) {
     if (!loaded_from(dlvsym(RTLD_DEFAULT, name, "GCC_4.3.0"), library))
       return false;
   }
@@ -63,6 +102,41 @@ bool check_numeric_runtime() {
   if (divide(-magnitude, 7) != -magnitude / 7 ||
       remainder(-magnitude, 7) != -magnitude % 7 ||
       unsigned_remainder(magnitude, 7) != magnitude % 7)
+    return false;
+
+  using DoubleComplexOp =
+      __complex__ double (*)(double, double, double, double);
+  using FloatComplexOp = __complex__ float (*)(float, float, float, float);
+  auto complex_multiply = reinterpret_cast<DoubleComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__muldc3", "GCC_4.0.0"));
+  auto complex_divide = reinterpret_cast<DoubleComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__divdc3", "GCC_4.0.0"));
+  auto float_complex_divide = reinterpret_cast<FloatComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__divsc3", "GCC_4.0.0"));
+  auto product = complex_multiply(1, 2, 3, 4);
+  auto quotient = complex_divide(4, 2, 1, 1);
+  auto float_quotient = float_complex_divide(4, 2, 1, 1);
+  if (__real__ product != -5 || __imag__ product != 10 ||
+      __real__ quotient != 3 || __imag__ quotient != -1 ||
+      __real__ float_quotient != 3 || __imag__ float_quotient != -1)
+    return false;
+  auto double_power = reinterpret_cast<double (*)(double, int)>(
+      dlvsym(RTLD_DEFAULT, "__powidf2", "GCC_4.0.0"));
+  auto float_power = reinterpret_cast<float (*)(float, int)>(
+      dlvsym(RTLD_DEFAULT, "__powisf2", "GCC_4.0.0"));
+  if (double_power(2, 10) != 1024 || double_power(2, -10) != 0x1p-10 ||
+      float_power(-2, 3) != -8 || float_power(2, -10) != 0x1p-10f)
+    return false;
+  auto quad_to_int = reinterpret_cast<int (*)(__float128)>(
+      dlvsym(RTLD_DEFAULT, "__fixtfsi", "GCC_4.3.0"));
+  auto unsigned_to_double = reinterpret_cast<double (*)(unsigned __int128)>(
+      dlvsym(RTLD_DEFAULT, "__floatuntidf", "GCC_4.2.0"));
+  if (quad_to_int(3.75) != 3 || quad_to_int(-3.75) != -3 ||
+      unsigned_to_double(static_cast<unsigned __int128>(1) << 100) != 0x1p100 ||
+      unsigned_to_double((static_cast<unsigned __int128>(1) << 53) + 1) !=
+          0x1p53 ||
+      unsigned_to_double((static_cast<unsigned __int128>(1) << 53) + 3) !=
+          0x1.0000000000002p53)
     return false;
 
   using QuadOp = __float128 (*)(__float128, __float128);
