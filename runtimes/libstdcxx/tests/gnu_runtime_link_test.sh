@@ -34,7 +34,7 @@ fi
 versions=(GCC_3.0 GCC_3.3 GCC_3.3.1 GCC_3.4 GCC_4.0.0 GCC_4.2.0)
 case "$(uname -m)" in
   x86_64) versions+=(GCC_4.3.0 GCC_4.8.0 GCC_12.0.0) ;;
-  aarch64) versions+=(GCC_4.5.0) ;;
+  aarch64) versions+=(GLIBC_2.0 GCC_4.5.0) ;;
   *) echo 'GNU runtime test requires native x86_64 or aarch64' >&2; exit 1 ;;
 esac
 for version in "${versions[@]}"; do
@@ -46,6 +46,19 @@ grep -F '_Unwind_Resume@@GCC_3.0' "$TEST_TMPDIR/gcc-symbols"
 grep -F '_Unwind_GetIPInfo@@GCC_4.2.0' "$TEST_TMPDIR/gcc-symbols"
 grep -F '__popcountdi2@@GCC_3.4' "$TEST_TMPDIR/gcc-symbols"
 grep -F '__gcc_personality_v0@@GCC_3.3.1' "$TEST_TMPDIR/gcc-symbols"
+if [[ "$(uname -m)" == aarch64 ]]; then
+  grep -F '__register_frame@@GLIBC_2.0' "$TEST_TMPDIR/gcc-symbols"
+  grep -F '__deregister_frame@@GLIBC_2.0' "$TEST_TMPDIR/gcc-symbols"
+  for symbol in __extenddftf2 __fixtfdi __fixtfsi __fixunstfdi __fixunstfsi __divti3 __modti3 __umodti3; do
+    grep -F "${symbol}@@GCC_3.0" "$TEST_TMPDIR/gcc-symbols"
+  done
+  for symbol in __divdc3 __divsc3 __muldc3 __multc3 __powidf2 __powisf2; do
+    grep -F "${symbol}@@GCC_4.0.0" "$TEST_TMPDIR/gcc-symbols"
+  done
+  for symbol in __floatunsitf __floatuntidf; do
+    grep -F "${symbol}@@GCC_4.2.0" "$TEST_TMPDIR/gcc-symbols"
+  done
+fi
 "$readelf" --dyn-syms --wide "$exception_library" > "$TEST_TMPDIR/exception-symbols"
 grep -E 'UND +__gcc_personality_v0@GCC_3\.3\.1' "$TEST_TMPDIR/exception-symbols"
 
