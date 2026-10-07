@@ -1,7 +1,10 @@
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unwind.h>
@@ -31,10 +34,46 @@ bool loaded_from(const void *symbol, const char *expected) {
 #if defined(__x86_64__)
 bool check_numeric_runtime() {
   const char *library = std::getenv("LIBGCC_S");
+  void *half_symbol = dlvsym(RTLD_DEFAULT, "__extendhfdf2", "GCC_12.0.0");
+  if (!loaded_from(half_symbol, library))
+    return false;
+  auto extend_half = reinterpret_cast<double (*)(_Float16)>(half_symbol);
+  // Decode binary16 independently: casting the input could call this same
+  // builtin.
+  for (unsigned bits = 0; bits < 65536; ++bits) {
+    const std::uint16_t representation = bits;
+    _Float16 input;
+    static_assert(sizeof(input) == sizeof(representation));
+    std::memcpy(&input, &representation, sizeof(input));
+    const double actual = extend_half(input);
+    const unsigned exponent = (bits >> 10) & 31;
+    const unsigned fraction = bits & 1023;
+    if (exponent == 31 && fraction != 0) {
+      if (!std::isnan(actual))
+        return false;
+      continue;
+    }
+    double expected =
+        exponent == 31
+            ? std::numeric_limits<double>::infinity()
+            : std::ldexp(exponent ? 1024 + fraction : fraction,
+                         exponent ? static_cast<int>(exponent) - 25 : -24);
+    if (bits & 0x8000)
+      expected = -expected;
+    if (actual != expected || std::signbit(actual) != std::signbit(expected))
+      return false;
+  }
   for (const char *name :
-       {"__addtf3", "__divtf3", "__eqtf2", "__floatditf", "__floatsitf",
-        "__floatunditf", "__getf2", "__gttf2", "__letf2", "__lttf2", "__multf3",
-        "__netf2", "__subtf3", "__unordtf2"}) {
+       {"__divdc3", "__divsc3", "__muldc3", "__powidf2", "__powisf2"}) {
+    if (!loaded_from(dlvsym(RTLD_DEFAULT, name, "GCC_4.0.0"), library))
+      return false;
+  }
+  if (!loaded_from(dlvsym(RTLD_DEFAULT, "__floatuntidf", "GCC_4.2.0"), library))
+    return false;
+  for (const char *name :
+       {"__addtf3", "__divtf3", "__eqtf2", "__fixtfsi", "__floatditf",
+        "__floatsitf", "__floatunditf", "__getf2", "__gttf2", "__letf2",
+        "__lttf2", "__multf3", "__netf2", "__subtf3", "__unordtf2"}) {
     if (!loaded_from(dlvsym(RTLD_DEFAULT, name, "GCC_4.3.0"), library))
       return false;
   }
@@ -65,6 +104,41 @@ bool check_numeric_runtime() {
       unsigned_remainder(magnitude, 7) != magnitude % 7)
     return false;
 
+  using DoubleComplexOp =
+      __complex__ double (*)(double, double, double, double);
+  using FloatComplexOp = __complex__ float (*)(float, float, float, float);
+  auto complex_multiply = reinterpret_cast<DoubleComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__muldc3", "GCC_4.0.0"));
+  auto complex_divide = reinterpret_cast<DoubleComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__divdc3", "GCC_4.0.0"));
+  auto float_complex_divide = reinterpret_cast<FloatComplexOp>(
+      dlvsym(RTLD_DEFAULT, "__divsc3", "GCC_4.0.0"));
+  auto product = complex_multiply(1, 2, 3, 4);
+  auto quotient = complex_divide(4, 2, 1, 1);
+  auto float_quotient = float_complex_divide(4, 2, 1, 1);
+  if (__real__ product != -5 || __imag__ product != 10 ||
+      __real__ quotient != 3 || __imag__ quotient != -1 ||
+      __real__ float_quotient != 3 || __imag__ float_quotient != -1)
+    return false;
+  auto double_power = reinterpret_cast<double (*)(double, int)>(
+      dlvsym(RTLD_DEFAULT, "__powidf2", "GCC_4.0.0"));
+  auto float_power = reinterpret_cast<float (*)(float, int)>(
+      dlvsym(RTLD_DEFAULT, "__powisf2", "GCC_4.0.0"));
+  if (double_power(2, 10) != 1024 || double_power(2, -10) != 0x1p-10 ||
+      float_power(-2, 3) != -8 || float_power(2, -10) != 0x1p-10f)
+    return false;
+  auto quad_to_int = reinterpret_cast<int (*)(__float128)>(
+      dlvsym(RTLD_DEFAULT, "__fixtfsi", "GCC_4.3.0"));
+  auto unsigned_to_double = reinterpret_cast<double (*)(unsigned __int128)>(
+      dlvsym(RTLD_DEFAULT, "__floatuntidf", "GCC_4.2.0"));
+  if (quad_to_int(3.75) != 3 || quad_to_int(-3.75) != -3 ||
+      unsigned_to_double(static_cast<unsigned __int128>(1) << 100) != 0x1p100 ||
+      unsigned_to_double((static_cast<unsigned __int128>(1) << 53) + 1) !=
+          0x1p53 ||
+      unsigned_to_double((static_cast<unsigned __int128>(1) << 53) + 3) !=
+          0x1.0000000000002p53)
+    return false;
+
   using QuadOp = __float128 (*)(__float128, __float128);
   auto add =
       reinterpret_cast<QuadOp>(dlvsym(RTLD_DEFAULT, "__addtf3", "GCC_4.3.0"));
@@ -75,6 +149,49 @@ bool check_numeric_runtime() {
 #endif
 
 int main() {
+#if defined(__aarch64__)
+  static_assert(sizeof(long double) == 16 && __LDBL_MANT_DIG__ == 113);
+  const char *library = std::getenv("LIBGCC_S");
+  void *extend = dlvsym(RTLD_DEFAULT, "__extenddftf2", "GCC_3.0");
+  void *to_signed = dlvsym(RTLD_DEFAULT, "__fixtfdi", "GCC_3.0");
+  void *to_unsigned = dlvsym(RTLD_DEFAULT, "__fixunstfdi", "GCC_3.0");
+  if (!loaded_from(extend, library) || !loaded_from(to_signed, library) ||
+      !loaded_from(to_unsigned, library))
+    return 9;
+  auto extend_double = reinterpret_cast<long double (*)(double)>(extend);
+  auto signed_integer = reinterpret_cast<std::int64_t (*)(long double)>(to_signed);
+  auto unsigned_integer = reinterpret_cast<std::uint64_t (*)(long double)>(to_unsigned);
+  if (extend_double(1.5) != 1.5L || extend_double(-0.25) != -0.25L ||
+      signed_integer(-42.75L) != -42 ||
+      signed_integer(-9223372036854775808.0L) != std::numeric_limits<std::int64_t>::min() ||
+      unsigned_integer(42.75L) != 42 ||
+      unsigned_integer(18446744073709551615.0L) != std::numeric_limits<std::uint64_t>::max())
+    return 10;
+  void *divide = dlvsym(RTLD_DEFAULT, "__divti3", "GCC_3.0");
+  void *remainder = dlvsym(RTLD_DEFAULT, "__modti3", "GCC_3.0");
+  void *unsigned_remainder = dlvsym(RTLD_DEFAULT, "__umodti3", "GCC_3.0");
+  if (!loaded_from(divide, library) || !loaded_from(remainder, library) ||
+      !loaded_from(unsigned_remainder, library))
+    return 11;
+  using Signed128 = __int128;
+  using Unsigned128 = unsigned __int128;
+  using SignedOp = Signed128 (*)(Signed128, Signed128);
+  using UnsignedOp = Unsigned128 (*)(Unsigned128, Unsigned128);
+  const Signed128 numerator = (Signed128{1} << 120) + 37;
+  const Signed128 denominator = Signed128{1} << 65;
+  const Signed128 quotient = Signed128{1} << 55;
+  if (reinterpret_cast<SignedOp>(divide)(numerator, denominator) != quotient ||
+      reinterpret_cast<SignedOp>(divide)(-numerator, denominator) != -quotient ||
+      reinterpret_cast<SignedOp>(remainder)(numerator, denominator) != 37 ||
+      reinterpret_cast<SignedOp>(remainder)(-numerator, denominator) != -37 ||
+      reinterpret_cast<UnsignedOp>(unsigned_remainder)(numerator, denominator) != 37)
+    return 12;
+  for (const char *symbol : {"__register_frame", "__deregister_frame"}) {
+    if (!loaded_from(dlvsym(RTLD_DEFAULT, symbol, "GLIBC_2.0"),
+                     std::getenv("LIBGCC_S")))
+      return 8;
+  }
+#endif
 #if defined(__x86_64__)
   if (!check_numeric_runtime())
     return 7;

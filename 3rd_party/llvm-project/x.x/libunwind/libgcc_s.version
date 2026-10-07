@@ -1,3 +1,10 @@
+# AArch64 GNU consumers, including Rust's LLVM, use this version for
+# dynamic frame registration. The implementations are provided by libunwind.
+GLIBC_2.0 {
+  global:
+    __register_frame;
+    __deregister_frame;
+};
 GCC_3.0 {
   global:
     _Unwind_DeleteException;
@@ -15,8 +22,16 @@ GCC_3.0 {
     _Unwind_SetIP;
     __addtf3;
     __divtf3;
+    __divti3;
+    __modti3;
+    __umodti3;
     __eqtf2;
+    __extenddftf2;
     __extendsftf2;
+    __fixtfdi;
+    __fixtfsi;
+    __fixunstfdi;
+    __fixunstfsi;
     __floatditf;
     __floatsitf;
     __getf2;
@@ -47,12 +62,21 @@ GCC_3.4 {
   global: __popcountdi2;
 } GCC_3.3.1;
 GCC_4.0.0 {
-  global: __mulsc3;
+  global:
+    __divdc3;
+    __divsc3;
+    __muldc3;
+    __mulsc3;
+    __multc3;
+    __powidf2;
+    __powisf2;
 } GCC_3.4;
 GCC_4.2.0 {
   global:
     _Unwind_GetIPInfo;
     __floatunditf;
+    __floatunsitf;
+    __floatuntidf;
 } GCC_4.0.0;
 GCC_4.5.0 {
   global: __unordtf2;
