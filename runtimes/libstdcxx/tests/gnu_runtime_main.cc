@@ -149,6 +149,49 @@ bool check_numeric_runtime() {
 #endif
 
 int main() {
+#if defined(__aarch64__)
+  static_assert(sizeof(long double) == 16 && __LDBL_MANT_DIG__ == 113);
+  const char *library = std::getenv("LIBGCC_S");
+  void *extend = dlvsym(RTLD_DEFAULT, "__extenddftf2", "GCC_3.0");
+  void *to_signed = dlvsym(RTLD_DEFAULT, "__fixtfdi", "GCC_3.0");
+  void *to_unsigned = dlvsym(RTLD_DEFAULT, "__fixunstfdi", "GCC_3.0");
+  if (!loaded_from(extend, library) || !loaded_from(to_signed, library) ||
+      !loaded_from(to_unsigned, library))
+    return 9;
+  auto extend_double = reinterpret_cast<long double (*)(double)>(extend);
+  auto signed_integer = reinterpret_cast<std::int64_t (*)(long double)>(to_signed);
+  auto unsigned_integer = reinterpret_cast<std::uint64_t (*)(long double)>(to_unsigned);
+  if (extend_double(1.5) != 1.5L || extend_double(-0.25) != -0.25L ||
+      signed_integer(-42.75L) != -42 ||
+      signed_integer(-9223372036854775808.0L) != std::numeric_limits<std::int64_t>::min() ||
+      unsigned_integer(42.75L) != 42 ||
+      unsigned_integer(18446744073709551615.0L) != std::numeric_limits<std::uint64_t>::max())
+    return 10;
+  void *divide = dlvsym(RTLD_DEFAULT, "__divti3", "GCC_3.0");
+  void *remainder = dlvsym(RTLD_DEFAULT, "__modti3", "GCC_3.0");
+  void *unsigned_remainder = dlvsym(RTLD_DEFAULT, "__umodti3", "GCC_3.0");
+  if (!loaded_from(divide, library) || !loaded_from(remainder, library) ||
+      !loaded_from(unsigned_remainder, library))
+    return 11;
+  using Signed128 = __int128;
+  using Unsigned128 = unsigned __int128;
+  using SignedOp = Signed128 (*)(Signed128, Signed128);
+  using UnsignedOp = Unsigned128 (*)(Unsigned128, Unsigned128);
+  const Signed128 numerator = (Signed128{1} << 120) + 37;
+  const Signed128 denominator = Signed128{1} << 65;
+  const Signed128 quotient = Signed128{1} << 55;
+  if (reinterpret_cast<SignedOp>(divide)(numerator, denominator) != quotient ||
+      reinterpret_cast<SignedOp>(divide)(-numerator, denominator) != -quotient ||
+      reinterpret_cast<SignedOp>(remainder)(numerator, denominator) != 37 ||
+      reinterpret_cast<SignedOp>(remainder)(-numerator, denominator) != -37 ||
+      reinterpret_cast<UnsignedOp>(unsigned_remainder)(numerator, denominator) != 37)
+    return 12;
+  for (const char *symbol : {"__register_frame", "__deregister_frame"}) {
+    if (!loaded_from(dlvsym(RTLD_DEFAULT, symbol, "GLIBC_2.0"),
+                     std::getenv("LIBGCC_S")))
+      return 8;
+  }
+#endif
 #if defined(__x86_64__)
   if (!check_numeric_runtime())
     return 7;
