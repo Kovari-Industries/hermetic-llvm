@@ -21,6 +21,7 @@ GCC_3.0 {
     _Unwind_SetGR;
     _Unwind_SetIP;
     __addtf3;
+    __clear_cache;
     __divtf3;
     __divti3;
     __modti3;

@@ -967,6 +967,7 @@ cc_library(
     ] + select({
         "@platforms//cpu:aarch64": [
             "lib/builtins/aarch64/fp_mode.c",
+            "lib/builtins/clear_cache.c",
             "lib/builtins/divdc3.c",
             "lib/builtins/divsc3.c",
             "lib/builtins/fixtfsi.c",

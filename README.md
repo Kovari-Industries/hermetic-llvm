@@ -266,6 +266,12 @@ paths, and numeric behavior in both link modes. The native x86_64 regression and
 real application imports, including OpenCV, pass. These exports do not change the
 ARM version map or introduce a host GNU runtime fallback.
 
+The AArch64 adapter includes compiler-rt's unchanged `clear_cache.c` and exports
+`__clear_cache@@GCC_3.0`, required by TensorRT 10.16.1.11. The native regression
+checks the symbol version and loaded path and calls it in both link modes.
+That regression and the declared TensorRT/CUDA import check pass on AArch64.
+This does not qualify GPU engine construction or inference.
+
 Rust 1.99 reports unused linker options. The toolchain marks only
 `--unwindlib=none` as conditionally consumed: Rust supplies `-nodefaultlibs`,
 which makes automatic unwind-library selection inapplicable. Other compiler

@@ -152,6 +152,11 @@ int main() {
 #if defined(__aarch64__)
   static_assert(sizeof(long double) == 16 && __LDBL_MANT_DIG__ == 113);
   const char *library = std::getenv("LIBGCC_S");
+  void *clear_cache = dlvsym(RTLD_DEFAULT, "__clear_cache", "GCC_3.0");
+  if (!loaded_from(clear_cache, library))
+    return 13;
+  alignas(64) char buffer[128]{};
+  reinterpret_cast<void (*)(void *, void *)>(clear_cache)(buffer, buffer + sizeof(buffer));
   void *extend = dlvsym(RTLD_DEFAULT, "__extenddftf2", "GCC_3.0");
   void *to_signed = dlvsym(RTLD_DEFAULT, "__fixtfdi", "GCC_3.0");
   void *to_unsigned = dlvsym(RTLD_DEFAULT, "__fixunstfdi", "GCC_3.0");

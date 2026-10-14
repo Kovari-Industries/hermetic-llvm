@@ -49,7 +49,7 @@ grep -F '__gcc_personality_v0@@GCC_3.3.1' "$TEST_TMPDIR/gcc-symbols"
 if [[ "$(uname -m)" == aarch64 ]]; then
   grep -F '__register_frame@@GLIBC_2.0' "$TEST_TMPDIR/gcc-symbols"
   grep -F '__deregister_frame@@GLIBC_2.0' "$TEST_TMPDIR/gcc-symbols"
-  for symbol in __extenddftf2 __fixtfdi __fixtfsi __fixunstfdi __fixunstfsi __divti3 __modti3 __umodti3; do
+  for symbol in __clear_cache __extenddftf2 __fixtfdi __fixtfsi __fixunstfdi __fixunstfsi __divti3 __modti3 __umodti3; do
     grep -F "${symbol}@@GCC_3.0" "$TEST_TMPDIR/gcc-symbols"
   done
   for symbol in __divdc3 __divsc3 __muldc3 __multc3 __powidf2 __powisf2; do
