@@ -1,0 +1,34 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
+# Matches llvm/tools/gold/CMakeLists.txt, using this LLVM source revision's LTO
+# and configured backend libraries, not a host-installed or other-version plugin.
+cc_binary(
+    name = "LLVMgold.so",
+    srcs = ["gold-plugin.cpp"],
+    additional_linker_inputs = ["@llvm//toolchain/mold:gold.exports.map"],
+    copts = ["-fvisibility=default"],
+    linkopts = [
+        "-Wl,--version-script=$(location @llvm//toolchain/mold:gold.exports.map)",
+        "-Wl,-z,defs",
+    ],
+    linkshared = True,
+    linkstatic = True,
+    deps = [
+        "//llvm:AllTargetsAsmParsers",
+        "//llvm:AllTargetsCodeGens",
+        "//llvm:BitReader",
+        "//llvm:BitWriter",
+        "//llvm:CodeGen",
+        "//llvm:Core",
+        "//llvm:IPO",
+        "//llvm:LTO",
+        "//llvm:Linker",
+        "//llvm:Object",
+        "//llvm:Remarks",
+        "//llvm:Support",
+        "//llvm:TargetParser",
+        "//llvm:config",
+        "@llvm//toolchain/mold:plugin_api",
+    ],
+    visibility = ["//visibility:public"],
+)

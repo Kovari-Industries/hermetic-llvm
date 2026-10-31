@@ -32,6 +32,8 @@ def declare_toolchains(*, execs = SUPPORTED_EXECS, targets = SUPPORTED_TARGETS):
         # See https://github.com/bazelbuild/rules_cc/issues/299#issuecomment-2660340534
         cc_toolchain(
             name = cc_toolchain_name,
+            exec_os = exec_os,
+            exec_cpu = exec_cpu,
             tool_map = platform_cc_tool_map(exec_os, exec_cpu),
             module_map = platform_module_map(exec_os, exec_cpu),
             # Paths below describe the concrete execution filesystem. Keep

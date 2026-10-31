@@ -161,6 +161,7 @@ def _source_archive_for_version(llvm_version, llvm_version_index):
     )
 
 def _llvm_version_repository_impl(rctx):
+    plugin_settings = {key: json.decode(rctx.attr.mold_plugin_build_settings[key]) for key in sorted(rctx.attr.mold_plugin_build_settings)}
     rctx.file("BUILD.bazel", """\
 load("@bazel_lib//:bzl_library.bzl", "bzl_library")
 
@@ -172,7 +173,7 @@ bzl_library(
 """)
     rctx.file(
         "version.bzl",
-        "LLVM_VERSION = {}\n".format(repr(rctx.attr.llvm_version)),
+        "LLVM_VERSION = {}\nMOLD_PLUGIN_BUILD_SETTINGS = {}\n".format(repr(rctx.attr.llvm_version), repr(plugin_settings)),
     )
     return rctx.repo_metadata(reproducible = True)
 
@@ -180,6 +181,7 @@ _llvm_version_repository = repository_rule(
     implementation = _llvm_version_repository_impl,
     attrs = {
         "llvm_version": attr.string(mandatory = True),
+        "mold_plugin_build_settings": attr.string_dict(),
     },
 )
 
@@ -224,13 +226,34 @@ def _get_llvm_targets(mctx):
                 targets[target] = None
     return targets.keys()
 
+def _get_mold_plugin_build_settings(mctx):
+    result = {}
+    for module in mctx.modules:
+        for configure in module.tags.configure:
+            if configure.mold_plugin_build_settings and not module.is_root:
+                fail("Only the root module may configure foreign LLVMgold settings")
+            for label, encoded in configure.mold_plugin_build_settings.items():
+                value = json.decode(encoded)
+                if not (type(value) in ["bool", "int", "string"] or (type(value) == "list" and all([type(item) == "string" for item in value]))):
+                    fail("LLVMgold setting {} must be a JSON bool, int, string, or string list".format(label))
+                key = str(label)
+                if key in result:
+                    fail("LLVMgold setting {} was specified more than once".format(label))
+
+                # Resolve labels in the supplying root's repository mapping.
+                # Do not add an LLVM -> Rust module dependency.
+                result[key] = json.encode(value)
+    return result
+
 def _llvm_impl(mctx):
     llvm_version = _get_llvm_version(mctx)
     llvm_version_index = _get_llvm_version_index(mctx)
+    plugin_settings = _get_mold_plugin_build_settings(mctx)
 
     _llvm_version_repository(
         name = "llvm_version",
         llvm_version = llvm_version,
+        mold_plugin_build_settings = plugin_settings,
     )
     _create_llvm_project_repository(mctx, llvm_version, llvm_version_index, _get_llvm_targets(mctx))
 
@@ -249,6 +272,10 @@ _version_tag = tag_class(
 _configure_tag = tag_class(
     attrs = {
         "targets": attr.string_list(mandatory = True),
+        "mold_plugin_build_settings": attr.label_keyed_string_dict(
+            default = {},
+            doc = "Root-only LLVMgold foreign-setting normalization values, encoded as JSON bools, ints, strings, or string lists.",
+        ),
     },
 )
 

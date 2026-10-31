@@ -36,6 +36,32 @@ http_archive(
     urls = ["https://github.com/facebook/zstd/releases/download/v1.5.2/zstd-1.5.2.tar.gz"],
 )
 
+# Official mold releases are independent of the compiler/runtime bootstrap graph.
+# Checksums and execution ABI qualification are recorded in toolchain/mold/README.md.
+[
+    http_archive(
+        name = "mold_linux_" + arch,
+        build_file = "//toolchain/mold:release.BUILD.bazel",
+        sha256 = sha256,
+        strip_prefix = "mold-3.0.0-" + arch + "-linux",
+        urls = ["https://github.com/rui314/mold/releases/download/v3.0.0/mold-3.0.0-" + arch + "-linux.tar.gz"],
+    )
+    for arch, sha256 in {
+        "aarch64": "52c759d3689babaea4c42af2f31062a74ab83e17ffb5a8090232534c67b70577",
+        "x86_64": "6c90d4a474c7c0409dfb575be03a5345878ac14fdba18de8b40fa58c60121189",
+    }.items()
+]
+
+# GNU's stable linker-plugin ABI header, matching the already-pinned GCC source.
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+http_file(
+    name = "gold_plugin_api",
+    downloaded_file_path = "plugin-api.h",
+    sha256 = "0fd1645b409e2c83dc60f5387178a6cb02812bc46cf533655fa595c59dc93028",
+    urls = ["https://raw.githubusercontent.com/gcc-mirror/gcc/2bfd402f8569511901ec8fe7628f57471e6d240a/include/plugin-api.h"],
+)
+
 LLVM_VERSION = "23.1.2"
 
 llvm = use_extension("//extensions:llvm.bzl", "llvm")

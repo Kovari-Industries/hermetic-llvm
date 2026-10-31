@@ -2,6 +2,14 @@ load("@rules_cc//cc/toolchains:args.bzl", "cc_args")
 
 package(default_visibility = ["//visibility:public"])
 
+# The exact exec-architecture mold path and input are attached by cc_toolchain.
+# Keep the driver personality here, selected by target OS rather than worker OS.
+cc_args(
+    name = "mold_linker",
+    actions = ["@rules_cc//cc/toolchains/actions:link_actions"],
+    args = ["-fuse-ld=mold"],
+)
+
 # Extracted from rules_cc unix_cc_configure.bzl
 # TODO(cerisier): Extract those into proper semantic args list.
 cc_args(

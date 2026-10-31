@@ -84,7 +84,22 @@ def _expose_third_party_build_files(rctx):
     rctx.delete("utils/bazel/third_party_build/BUILD.bazel")
     rctx.file("utils/bazel/third_party_build/BUILD.bazel", """exports_files(["pfm.BUILD"])\n""", executable = False)
 
+def _write_llvmgold_build(rctx):
+    # Path/git overrides may symlink these directories into the user's checkout.
+    # Materialize only the directory spine before adding our BUILD overlay.
+    for directory in ["llvm", "llvm/tools", "llvm/tools/gold"]:
+        path = rctx.path(directory)
+        if str(path.realpath) != str(path.dirname.realpath.get_child(path.basename)):
+            entries = [(entry.basename, entry.realpath) for entry in path.readdir()]
+            rctx.delete(path)
+            for basename, source in entries:
+                rctx.symlink(source, directory + "/" + basename)
+    destination = "llvm/tools/gold/BUILD.bazel"
+    rctx.delete(destination)
+    rctx.file(destination, rctx.read(Label("//toolchain/mold:gold.BUILD.bazel")), executable = False)
+
 def write_llvm_project_files(rctx):
+    _write_llvmgold_build(rctx)
     _expose_third_party_build_files(rctx)
     rctx.file("BUILD.bazel", """\
 load("@bazel_lib//:bzl_library.bzl", "bzl_library")

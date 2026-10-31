@@ -540,6 +540,8 @@ def declare_toolchains(*, execs = None, targets = SUPPORTED_TARGETS):
             # See https://github.com/bazelbuild/rules_cc/issues/299#issuecomment-2660340534
             cc_toolchain(
                 name = cc_toolchain_name,
+                exec_os = exec_os,
+                exec_cpu = exec_cpu,
                 extra_args = [cc_toolchain_name + "_resource_directory_args"] + select({
                     "@llvm//platforms/config:windows_x86_64_msvc": [
                         "@llvm//toolchain/args/windows/msvc:normalized_default_libs_for_runtime",

@@ -1,0 +1,61 @@
+load("@bazel_lib//:bzl_library.bzl", "bzl_library")
+load("@bazel_lib//lib:copy_file.bzl", "copy_file")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load(":gold.bzl", "llvmgold")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "release.BUILD.bazel",
+    "gold.BUILD.bazel",
+    "gold.exports.map",
+])
+
+bzl_library(
+    name = "tool",
+    srcs = ["tool.bzl"],
+    deps = ["@rules_cc//cc/toolchains:toolchain_rules"],
+)
+
+bool_flag(
+    name = "building_plugin",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "plugin_build",
+    flag_values = {":building_plugin": "true"},
+)
+
+copy_file(
+    name = "plugin_api_header",
+    src = "@gold_plugin_api//file",
+    out = "include/plugin-api.h",
+)
+
+cc_library(
+    name = "plugin_api",
+    hdrs = [":plugin_api_header"],
+    includes = ["include"],
+)
+
+[
+    llvmgold(
+        name = "llvmgold_" + cpu,
+        platform = "//platforms:linux_" + cpu + "_gnu.2.28",
+    )
+    for cpu in [
+        "aarch64",
+        "x86_64",
+    ]
+]
+
+bzl_library(
+    name = "gold",
+    srcs = ["gold.bzl"],
+    deps = [
+        "//toolchain/bootstrap:transition_settings",
+        "@llvm_version//:version",
+    ],
+)

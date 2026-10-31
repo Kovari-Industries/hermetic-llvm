@@ -1,0 +1,6 @@
+# Only the linker is needed. Do not use the LD_PRELOAD wrapper or host PATH.
+filegroup(
+    name = "mold",
+    srcs = ["bin/mold"],
+    visibility = ["//visibility:public"],
+)

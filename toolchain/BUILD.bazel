@@ -557,6 +557,7 @@ bzl_library(
     name = "cc_toolchain",
     srcs = ["cc_toolchain.bzl"],
     deps = [
+        "//toolchain/mold:tool",
         "@rules_cc//cc/toolchains:toolchain_rules",
     ],
 )

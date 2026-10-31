@@ -1,14 +1,18 @@
 load("@rules_cc//cc/toolchains:feature_set.bzl", "cc_feature_set")
 load("@rules_cc//cc/toolchains:toolchain.bzl", _cc_toolchain = "cc_toolchain")
+load("//toolchain/mold:tool.bzl", "mold_linker_args")
 
 _WINDOWS_MSVC_SUPPORTS_HEADER_PARSING = False
 
 def cc_toolchain(
         name,
         tool_map,
+        exec_os,
+        exec_cpu,
         module_map = None,
         extra_args = None):
-    extra_args = extra_args or []
+    mold_linker_args(name = name + "_mold_args", exec_os = exec_os, exec_cpu = exec_cpu)
+    extra_args = (extra_args or []) + [name + "_mold_args"]
     cc_feature_set(
         name = name + "_msvc_known_features",
         all_of = [

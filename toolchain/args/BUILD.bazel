@@ -259,21 +259,20 @@ cc_args_list(
     ],
 )
 
-cc_args(
+cc_args_list(
     name = "fuse_ld",
-    actions = [
-        "@rules_cc//cc/toolchains/actions:link_actions",
-    ],
     args = select({
-        "//constraints/windows/abi:msvc": [
-            "/clang:-fuse-ld=lld",
-        ],
-        "//conditions:default": [
-            "-fuse-ld=lld",
-            # lld will be used if it's next to clang.
-            # It would have been great to set the path explicitly.
-            # "--ld-path={lld_path}",
-        ],
+        "@platforms//os:linux": ["//toolchain/args/linux:mold_linker"],
+        "//conditions:default": [":non_elf_linker"],
+    }),
+)
+
+cc_args(
+    name = "non_elf_linker",
+    actions = ["@rules_cc//cc/toolchains/actions:link_actions"],
+    args = select({
+        "//constraints/windows/abi:msvc": ["/clang:-fuse-ld=lld"],
+        "//conditions:default": ["-fuse-ld=lld"],
     }),
 )
 

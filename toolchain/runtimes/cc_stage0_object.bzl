@@ -1,6 +1,7 @@
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "CC_TOOLCHAIN_TYPE", "find_cc_toolchain", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("//toolchain/mold:tool.bzl", "mold_from_toolchain")
 
 #TODO(cerisier): use a single shared transition
 bootstrap_transition = transition(
@@ -77,7 +78,11 @@ def _cc_stage0_object_impl(ctx):
     )
 
     arguments = ctx.actions.args()
-    arguments.add("-fuse-ld=lld")
+    if ctx.target_platform_has_constraint(ctx.attr._linux[platform_common.ConstraintValueInfo]):
+        arguments.add("-fuse-ld=mold")
+        arguments.add("--ld-path=" + mold_from_toolchain(cc_toolchain).path)
+    else:
+        arguments.add("-fuse-ld=lld")
     arguments.add_all(ctx.attr.copts)
     arguments.add("-r")
     for src in ctx.files.srcs:
@@ -109,6 +114,7 @@ cc_stage0_object = rule(
     doc = "A rule that links .o and .a files into a single .o file.",
     implementation = _cc_stage0_object_impl,
     attrs = {
+        "_linux": attr.label(default = "@platforms//os:linux"),
         "srcs": attr.label_list(
             doc = "List of source files (.o or .a) to be linked into a single object file.",
             allow_files = [".o", ".a"],
