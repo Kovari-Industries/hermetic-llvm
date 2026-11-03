@@ -51,6 +51,23 @@ This ecosystem simplifies the process by cross-compiling all target-specific com
 
 ## Advanced Usage
 
+### Source-built backend scope in this fork
+
+This fork configures only the `AArch64` backend in `MODULE.bazel`. This shared
+source configuration applies to LLVMgold in normal builds and to every
+source-built compiler bootstrap stage, not just CI. The LLVM extension unions
+all modules' `llvm.configure(targets = ...)` tags; a consumer's `targets = []`
+does not remove the shared selection. Additional non-AArch64 backend tags must
+not be added when using this AArch64-only source configuration.
+
+Downloaded stage-zero compiler archives and cross-platform binary distribution
+declarations are unchanged. The upstream platform matrix below is therefore
+not a promise of non-AArch64 source-built code generation in this fork.
+LLVMgold cannot perform non-AArch64 LTO code generation, and source bootstrap
+flows that need to emit x86_64 compiler executables require the absent `X86`
+backend. Registering an x86_64 toolchain does not restore that backend.
+Compiler optimization profiles and plugin/LTO enablement are unchanged.
+
 ### Registering a subset of all toolchains
 
 Use the toolchain module extension:
