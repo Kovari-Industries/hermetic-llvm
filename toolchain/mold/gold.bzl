@@ -3,13 +3,13 @@
 load("@llvm_version//:version.bzl", "MOLD_PLUGIN_BUILD_SETTINGS")
 load("//toolchain/bootstrap:transition_settings.bzl", "SANITIZER_FLAGS", "disable_sanitizers")
 
-def _plugin_transition_impl(settings, attr):
+def _plugin_transition_impl(_settings, attr):
+    # The outer exec transition already selected host_compilation_mode. Keep
+    # that mode, stripping policy and explicit runtime optimization setting;
+    # cycle isolation does not require an optimized plugin.
     result = {
         "//runtimes:linkmode": "static",
-        "//command_line_option:host_compilation_mode": "opt",
         "//command_line_option:host_features": [],
-        "//command_line_option:strip": "always",
-        "//config:runtimes_optimization_mode": "optimized",
         "//config:empty_sysroot": True,
         "//command_line_option:collect_code_coverage": False,
         "@llvm-project//third-party:llvm_enable_zstd": True,
@@ -18,7 +18,6 @@ def _plugin_transition_impl(settings, attr):
         "//toolchain:bootstrap_stage": "stage0_prebuilt_seed",
         "//toolchain:runtime_stage": "complete",
         "//command_line_option:platforms": str(attr.platform),
-        "//command_line_option:compilation_mode": "opt",
         "//command_line_option:features": ["-thin_lto"],
         "//command_line_option:copt": [],
         "//command_line_option:cxxopt": [],
@@ -40,10 +39,7 @@ _plugin_transition = transition(
     inputs = [],
     outputs = [
         "//runtimes:linkmode",
-        "//command_line_option:host_compilation_mode",
         "//command_line_option:host_features",
-        "//command_line_option:strip",
-        "//config:runtimes_optimization_mode",
         "//config:empty_sysroot",
         "//command_line_option:collect_code_coverage",
         "@llvm-project//third-party:llvm_enable_zstd",
@@ -52,7 +48,6 @@ _plugin_transition = transition(
         "//toolchain:bootstrap_stage",
         "//toolchain:runtime_stage",
         "//command_line_option:platforms",
-        "//command_line_option:compilation_mode",
         "//command_line_option:features",
         "//command_line_option:copt",
         "//command_line_option:cxxopt",

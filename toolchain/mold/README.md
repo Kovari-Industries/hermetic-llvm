@@ -47,8 +47,13 @@ archives; its upstream licensing notice is preserved.
 files. The private `building_plugin` configuration omits the plugin dependency
 itself from that compiler's toolchain, preventing a cycle. This affects **only
 the plugin's construction**: requested application ThinLTO remains enabled.
-Compiler options, sanitizers and FDO from the application are not inherited by
-the plugin build. The root module supplies private foreign-setting resets through
+The plugin inherits Bazel's selected **host compilation mode** (already applied
+by its outer execution transition), stripping policy and explicit runtime
+optimization setting. It does not force `opt`: `--host_compilation_mode=dbg`
+compiles LLVMgold and its LLVM libraries with `-O0 -g`; `opt` retains `-O2`.
+Raw compiler/linker options, sanitizers and FDO from the application remain
+isolated to prevent self-dependent LTO/toolchain configurations. The root module
+supplies private foreign-setting resets through
 `llvm.configure(mold_plugin_build_settings = ...)`. Label keys resolve in the
 root's repository mapping and values are JSON literals. LLVM has no reverse
 module dependency on `rules_rs` and no hardcoded generated Rust repository name.
@@ -68,9 +73,16 @@ difference. Both approaches lose reuse of warm toolchain artifacts.
 
 The root's non-compiling `plugin_configuration_test` fixtures check actual
 artifact sharing for bootstrap/non-bootstrap and retained/trimmed caller
-settings, while verifying the caller's CGU/bootstrap settings survive. Run them
-under each repository profile. Application Rust flags, the existing fixed native
-execution configuration, and requested C++ ThinLTO remain unchanged.
+settings, while verifying the caller's CGU/bootstrap settings survive and the
+real plugin/LLVM compile actions obey the host mode. Run them under each
+repository profile, including mixed target/host modes. Application Rust flags,
+the native execution CPU/ABI and requested application C++ ThinLTO remain intact.
+
+Runtime prerequisites retain their independently selected optimization policy
+(`runtimes_optimization_mode` defaults to `optimized`). In particular, glibc
+requires optimization and its overlay explicitly supplies `-O2`. Explicit
+source-compiler/FDO bootstrap stages have their own optimized build policy;
+they are not the default prebuilt-seed path used by ordinary CI.
 
 
 Source archive, Git and path overrides all receive the gold
